@@ -61,7 +61,6 @@ func New(csp bccsp.BCCSP, key bccsp.Key) (crypto.Signer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed marshalling der to public key [%s]", err)
 	}
-
 	return &bccspCryptoSigner{csp, key, pk}, nil
 }
 

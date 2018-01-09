@@ -1,4 +1,5 @@
 /*
+Copyright Beijing Sansec Technology Development Co., Ltd. 2017 All Rights Reserved.
 Copyright IBM Corp. 2016 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,6 +33,7 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/utils"
+	"github.com/warm3snow/gmsm/sm2"
 )
 
 // NewFileBasedKeyStore instantiated a file-based key store at a given position.
@@ -137,6 +139,8 @@ func (ks *fileBasedKeyStore) GetKey(ski []byte) (k bccsp.Key, err error) {
 		}
 
 		switch key.(type) {
+		case *sm2.PrivateKey:
+			return &sm2PrivateKey{key.(*sm2.PrivateKey)}, nil
 		case *ecdsa.PrivateKey:
 			return &ecdsaPrivateKey{key.(*ecdsa.PrivateKey)}, nil
 		case *rsa.PrivateKey:
@@ -152,6 +156,8 @@ func (ks *fileBasedKeyStore) GetKey(ski []byte) (k bccsp.Key, err error) {
 		}
 
 		switch key.(type) {
+		case *sm2.PublicKey:
+			return &sm2PublicKey{key.(*sm2.PublicKey)}, nil
 		case *ecdsa.PublicKey:
 			return &ecdsaPublicKey{key.(*ecdsa.PublicKey)}, nil
 		case *rsa.PublicKey:
@@ -189,6 +195,21 @@ func (ks *fileBasedKeyStore) StoreKey(k bccsp.Key) (err error) {
 		err = ks.storePublicKey(hex.EncodeToString(k.SKI()), kk.pubKey)
 		if err != nil {
 			return fmt.Errorf("Failed storing ECDSA public key [%s]", err)
+		}
+	case *sm2PrivateKey:
+		kk := k.(*sm2PrivateKey)
+
+		err = ks.storePrivateKey(hex.EncodeToString(k.SKI()), kk.privKey)
+		if err != nil {
+			return fmt.Errorf("Failed storing sm2 private key [%s]", err)
+		}
+
+	case *sm2PublicKey:
+		kk := k.(*sm2PublicKey)
+
+		err = ks.storePublicKey(hex.EncodeToString(k.SKI()), kk.pubKey)
+		if err != nil {
+			return fmt.Errorf("Failed storing sm2 public key [%s]", err)
 		}
 
 	case *rsaPrivateKey:

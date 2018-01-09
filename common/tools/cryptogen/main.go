@@ -32,6 +32,7 @@ import (
 	"github.com/hyperledger/fabric/common/tools/cryptogen/ca"
 	"github.com/hyperledger/fabric/common/tools/cryptogen/metadata"
 	"github.com/hyperledger/fabric/common/tools/cryptogen/msp"
+	"github.com/hyperledger/fabric/common/tools/cryptogenCN"
 )
 
 const (
@@ -198,6 +199,8 @@ var (
 	outputDir  = gen.Flag("output", "The output directory in which to place artifacts").Default("crypto-config").String()
 	configFile = gen.Flag("config", "The configuration template to use").File()
 
+	sm2Flag = gen.Flag("sm2", "enable sm2 cryptographic").Default("false").Bool()
+
 	showtemplate = app.Command("showtemplate", "Show the default configuration template")
 
 	version = app.Command("version", "Show version information")
@@ -209,7 +212,11 @@ func main() {
 
 	// "generate" command
 	case gen.FullCommand():
-		generate()
+		if *sm2Flag {
+			cryptogenCN.Generate(configFile, outputDir)
+		} else {
+			generate()
+		}
 
 	// "showtemplate" command
 	case showtemplate.FullCommand():

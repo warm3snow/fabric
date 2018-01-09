@@ -1,4 +1,5 @@
 /*
+Copyright Beijing Sansec Technology Development Co., Ltd. 2017 All Rights Reserved.
 Copyright IBM Corp. 2017 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -89,6 +90,31 @@ func TestAESPrivateKeyKeyDeriver(t *testing.T) {
 	assert.Contains(t, err.Error(), "Invalid opts parameter. It must not be nil.")
 
 	_, err = kd.KeyDeriv(&aesPrivateKey{}, &mocks2.KeyDerivOpts{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Unsupported 'KeyDerivOpts' provided [")
+}
+
+//sm2
+func TestSM2PublicKeyKeyDeriver(t *testing.T) {
+	kd := sm2PublicKeyKeyDeriver{}
+
+	_, err := kd.KeyDeriv(&mocks2.MockKey{}, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Invalid opts parameter. It must not be nil.")
+
+	_, err = kd.KeyDeriv(&sm2PublicKey{}, &mocks2.KeyDerivOpts{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Unsupported 'KeyDerivOpts' provided [")
+}
+
+func TestSM2PrivateKeyKeyDeriver(t *testing.T) {
+	kd := sm2PrivateKeyKeyDeriver{}
+
+	_, err := kd.KeyDeriv(&mocks2.MockKey{}, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Invalid opts parameter. It must not be nil.")
+
+	_, err = kd.KeyDeriv(&sm2PrivateKey{}, &mocks2.KeyDerivOpts{})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Unsupported 'KeyDerivOpts' provided [")
 }

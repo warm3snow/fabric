@@ -1,4 +1,5 @@
 /*
+Copyright Beijing Sansec Technology Development Co., Ltd. 2017 All Rights Reserved.
 Copyright IBM Corp. 2016 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,6 +39,8 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/signer"
 	"github.com/hyperledger/fabric/bccsp/utils"
+	"github.com/warm3snow/gmsm/sm2"
+	sm2Utils "github.com/warm3snow/gmsm/utils"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -62,9 +65,9 @@ func TestMain(m *testing.M) {
 
 	tests := []testConfig{
 		{256, "SHA2"},
-		{256, "SHA3"},
-		{384, "SHA2"},
-		{384, "SHA3"},
+		//{256, "SHA3"},
+		//{384, "SHA2"},
+		//{384, "SHA3"},
 	}
 
 	for _, config := range tests {
@@ -1809,3 +1812,673 @@ func getCryptoHashIndex(t *testing.T) crypto.Hash {
 
 	return crypto.SHA3_256
 }
+
+//sm2 256
+func TestKeyGenSM2Opts(t *testing.T) {
+	// Curve P256sm2
+	k, err := currentBCCSP.KeyGen(&bccsp.SM2KeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating sm2 P256 key [%s]", err)
+	}
+	if k == nil {
+		t.Fatal("Failed generating sm2 P256 key. Key must be different from nil")
+	}
+	if !k.Private() {
+		t.Fatal("Failed generating sm2 P256 key. Key should be private")
+	}
+	if k.Symmetric() {
+		t.Fatal("Failed generating sm2 P256 key. Key should be asymmetric")
+	}
+
+	sm2Key := k.(*sm2PrivateKey).privKey
+	if !sm2.P256Sm2().IsOnCurve(sm2Key.X, sm2Key.Y) {
+		t.Fatal("P256Sm2 generated key in invalid. The public key must be on the P256Sm2 curve.")
+	}
+	if sm2.P256Sm2() != sm2Key.Curve {
+		t.Fatal("P256Sm2 generated key in invalid. The curve must be P256Sm2.")
+	}
+	if sm2Key.D.Cmp(big.NewInt(0)) == 0 {
+		t.Fatal("P256Sm2 generated key in invalid. Private key must be different from 0.")
+	}
+}
+
+func TestSM2KeyGenEphemeral(t *testing.T) {
+	k, err := currentBCCSP.KeyGen(&bccsp.SM2KeyGenOpts{Temporary: true})
+	if err != nil {
+		t.Fatalf("Failed generating sm2 key [%s]", err)
+	}
+	if k == nil {
+		t.Fatal("Failed generating sm2 key. Key must be different from nil")
+	}
+	if !k.Private() {
+		t.Fatal("Failed generating sm2 key. Key should be private")
+	}
+	if k.Symmetric() {
+		t.Fatal("Failed generating sm2 key. Key should be asymmetric")
+	}
+	raw, err := k.Bytes()
+	if err == nil {
+		t.Fatal("Failed marshalling to bytes. Marshalling must fail.")
+	}
+	if len(raw) != 0 {
+		t.Fatal("Failed marshalling to bytes. Output should be 0 bytes")
+	}
+	pk, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting corresponding public key [%s]", err)
+	}
+	if pk == nil {
+		t.Fatal("Public key must be different from nil.")
+	}
+}
+
+func TestSM2PrivateKeySKI(t *testing.T) {
+
+	k, err := currentBCCSP.KeyGen(&bccsp.SM2KeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating sm2 key [%s]", err)
+	}
+
+	ski := k.SKI()
+	if len(ski) == 0 {
+		t.Fatal("SKI not valid. Zero length.")
+	}
+}
+
+func TestSM2KeyGenNonEphemeral(t *testing.T) {
+
+	k, err := currentBCCSP.KeyGen(&bccsp.SM2KeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating sm2 key [%s]", err)
+	}
+	if k == nil {
+		t.Fatal("Failed generating sm2 key. Key must be different from nil")
+	}
+	if !k.Private() {
+		t.Fatal("Failed generating sm2 key. Key should be private")
+	}
+	if k.Symmetric() {
+		t.Fatal("Failed generating sm2 key. Key should be asymmetric")
+	}
+}
+
+func TestSM2GetKeyBySKI(t *testing.T) {
+
+	k, err := currentBCCSP.KeyGen(&bccsp.SM2KeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating sm2 key [%s]", err)
+	}
+
+	k2, err := currentBCCSP.GetKey(k.SKI())
+	if err != nil {
+		t.Fatalf("Failed getting sm2 key [%s]", err)
+	}
+	if k2 == nil {
+		t.Fatal("Failed getting sm2 key. Key must be different from nil")
+	}
+	if !k2.Private() {
+		t.Fatal("Failed getting sm2 key. Key should be private")
+	}
+	if k2.Symmetric() {
+		t.Fatal("Failed getting sm2 key. Key should be asymmetric")
+	}
+
+	// Check that the SKIs are the same
+	if !bytes.Equal(k.SKI(), k2.SKI()) {
+		t.Fatalf("SKIs are different [%x]!=[%x]", k.SKI(), k2.SKI())
+	}
+}
+func TestSM2PublicKeyFromPrivateKey(t *testing.T) {
+
+	k, err := currentBCCSP.KeyGen(&bccsp.SM2KeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating sm2 key [%s]", err)
+	}
+
+	pk, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting public key from private sm2 key [%s]", err)
+	}
+	if pk == nil {
+		t.Fatal("Failed getting public key from private sm2 key. Key must be different from nil")
+	}
+	if pk.Private() {
+		t.Fatal("Failed generating sm2 key. Key should be public")
+	}
+	if pk.Symmetric() {
+		t.Fatal("Failed generating sm2 key. Key should be asymmetric")
+	}
+}
+
+func TestSM2PublicKeyBytes(t *testing.T) {
+
+	k, err := currentBCCSP.KeyGen(&bccsp.SM2KeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating sm2 key [%s]", err)
+	}
+
+	pk, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting public key from private sm2 key [%s]", err)
+	}
+
+	raw, err := pk.Bytes()
+	if err != nil {
+		t.Fatalf("Failed marshalling sm2 public key [%s]", err)
+	}
+	if len(raw) == 0 {
+		t.Fatal("Failed marshalling sm2 public key. Zero length")
+	}
+}
+
+func TestSM2PublicKeySKI(t *testing.T) {
+
+	k, err := currentBCCSP.KeyGen(&bccsp.SM2KeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating sm2 key [%s]", err)
+	}
+
+	pk, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting public key from private sm2 key [%s]", err)
+	}
+
+	ski := pk.SKI()
+	if len(ski) == 0 {
+		t.Fatal("SKI not valid. Zero length.")
+	}
+}
+
+func TestSM2KeyReRand(t *testing.T) {
+
+	k, err := currentBCCSP.KeyGen(&bccsp.SM2KeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating sm2 key [%s]", err)
+	}
+	if k == nil {
+		t.Fatal("Failed re-randomizing sm2 key. Re-randomized Key must be different from nil")
+	}
+
+	reRandomizedKey, err := currentBCCSP.KeyDeriv(k, &bccsp.SM2ReRandKeyOpts{Temporary: false, Expansion: []byte{1}})
+	if err != nil {
+		t.Fatalf("Failed re-randomizing sm2 key [%s]", err)
+	}
+	if !reRandomizedKey.Private() {
+		t.Fatal("Failed re-randomizing sm2 key. Re-randomized Key should be private")
+	}
+	if reRandomizedKey.Symmetric() {
+		t.Fatal("Failed re-randomizing sm2 key. Re-randomized Key should be asymmetric")
+	}
+
+	k2, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting public sm2 key from private [%s]", err)
+	}
+	if k2 == nil {
+		t.Fatal("Failed re-randomizing sm2 key. Re-randomized Key must be different from nil")
+	}
+
+	reRandomizedKey2, err := currentBCCSP.KeyDeriv(k2, &bccsp.SM2ReRandKeyOpts{Temporary: false, Expansion: []byte{1}})
+	if err != nil {
+		t.Fatalf("Failed re-randomizing sm2 key [%s]", err)
+	}
+
+	if reRandomizedKey2.Private() {
+		t.Fatal("Re-randomized public Key must remain public")
+	}
+	if reRandomizedKey2.Symmetric() {
+		t.Fatal("Re-randomized sm2 asymmetric key must remain asymmetric")
+	}
+
+	if false == bytes.Equal(reRandomizedKey.SKI(), reRandomizedKey2.SKI()) {
+		t.Fatal("Re-randomized sm2 Private- or Public-Keys must end up having the same SKI")
+	}
+}
+
+func TestSM2Sign(t *testing.T) {
+
+	k, err := currentBCCSP.KeyGen(&bccsp.SM2KeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating sm2 key [%s]", err)
+	}
+
+	msg := []byte("Hello World")
+
+	digest, err := currentBCCSP.Hash(msg, &bccsp.SHAOpts{})
+	if err != nil {
+		t.Fatalf("Failed computing HASH [%s]", err)
+	}
+
+	signature, err := currentBCCSP.Sign(k, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed generating sm2 signature [%s]", err)
+	}
+	if len(signature) == 0 {
+		t.Fatal("Failed generating sm2 key. Signature must be different from nil")
+	}
+}
+func TestSM2Verify(t *testing.T) {
+
+	k, err := currentBCCSP.KeyGen(&bccsp.SM2KeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating sm2 key [%s]", err)
+	}
+
+	msg := []byte("Hello World")
+
+	digest, err := currentBCCSP.Hash(msg, &bccsp.SHAOpts{})
+	if err != nil {
+		t.Fatalf("Failed computing HASH [%s]", err)
+	}
+
+	signature, err := currentBCCSP.Sign(k, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed generating sm2 signature [%s]", err)
+	}
+
+	valid, err := currentBCCSP.Verify(k, signature, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed verifying sm2 signature [%s]", err)
+	}
+	if !valid {
+		t.Fatal("Failed verifying sm2 signature. Signature not valid.")
+	}
+	pk, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting corresponding public key [%s]", err)
+	}
+
+	valid, err = currentBCCSP.Verify(pk, signature, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed verifying sm2 signature [%s]", err)
+	}
+	if !valid {
+		t.Fatal("Failed verifying sm2 signature. Signature not valid.")
+	}
+
+	// Store public key
+	err = currentKS.StoreKey(pk)
+	if err != nil {
+		t.Fatalf("Failed storing corresponding public key [%s]", err)
+	}
+
+	pk2, err := currentKS.GetKey(pk.SKI())
+	if err != nil {
+		t.Fatalf("Failed retrieving corresponding public key [%s]", err)
+	}
+
+	valid, err = currentBCCSP.Verify(pk2, signature, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed verifying sm2 signature [%s]", err)
+	}
+	if !valid {
+		t.Fatal("Failed verifying sm2 signature. Signature not valid.")
+	}
+}
+
+func TestSM2KeyDeriv(t *testing.T) {
+
+	k, err := currentBCCSP.KeyGen(&bccsp.SM2KeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating sm2 key [%s]", err)
+	}
+
+	reRandomizedKey, err := currentBCCSP.KeyDeriv(k, &bccsp.SM2ReRandKeyOpts{Temporary: false, Expansion: []byte{1}})
+	if err != nil {
+		t.Fatalf("Failed re-randomizing sm2 key [%s]", err)
+	}
+
+	msg := []byte("Hello World")
+
+	digest, err := currentBCCSP.Hash(msg, &bccsp.SHAOpts{})
+	if err != nil {
+		t.Fatalf("Failed computing HASH [%s]", err)
+	}
+
+	signature, err := currentBCCSP.Sign(reRandomizedKey, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed generating sm2 signature [%s]", err)
+	}
+
+	valid, err := currentBCCSP.Verify(reRandomizedKey, signature, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed verifying sm2 signature [%s]", err)
+	}
+	if !valid {
+		t.Fatal("Failed verifying sm2 signature. Signature not valid.")
+	}
+}
+func TestSM2KeyImportFromExportedKey(t *testing.T) {
+
+	// Generate an sm2 key
+	k, err := currentBCCSP.KeyGen(&bccsp.SM2KeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating sm2 key [%s]", err)
+	}
+
+	// Export the public key
+	pk, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting sm2 public key [%s]", err)
+	}
+
+	pkRaw, err := pk.Bytes()
+	if err != nil {
+		t.Fatalf("Failed getting sm2 raw public key [%s]", err)
+	}
+
+	// Import the exported public key
+	pk2, err := currentBCCSP.KeyImport(pkRaw, &bccsp.SM2PKIXPublicKeyImportOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed importing sm2 public key [%s]", err)
+	}
+	if pk2 == nil {
+		t.Fatal("Failed importing sm2 public key. Return BCCSP key cannot be nil.")
+	}
+
+	// Sign and verify with the imported public key
+	msg := []byte("Hello World")
+
+	digest, err := currentBCCSP.Hash(msg, &bccsp.SHAOpts{})
+	if err != nil {
+		t.Fatalf("Failed computing HASH [%s]", err)
+	}
+
+	signature, err := currentBCCSP.Sign(k, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed generating sm2 signature [%s]", err)
+	}
+
+	valid, err := currentBCCSP.Verify(pk2, signature, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed verifying sm2 signature [%s]", err)
+	}
+	if !valid {
+		t.Fatal("Failed verifying sm2 signature. Signature not valid.")
+	}
+}
+func TestSM2KeyImportFromSM2PublicKey(t *testing.T) {
+
+	// Generate an sm2 key
+	k, err := currentBCCSP.KeyGen(&bccsp.SM2KeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating sm2 key [%s]", err)
+	}
+
+	// Export the public key
+	pk, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting sm2 public key [%s]", err)
+	}
+
+	pkRaw, err := pk.Bytes()
+	if err != nil {
+		t.Fatalf("Failed getting sm2 raw public key [%s]", err)
+	}
+
+	pub, err := utils.DERToPublicKey(pkRaw)
+	if err != nil {
+		t.Fatalf("Failed converting raw to sm2.PublicKey [%s]", err)
+	}
+
+	// Import the sm2.PublicKey
+	pk2, err := currentBCCSP.KeyImport(pub, &bccsp.SM2GoPublicKeyImportOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed importing sm2 public key [%s]", err)
+	}
+	if pk2 == nil {
+		t.Fatal("Failed importing sm2 public key. Return BCCSP key cannot be nil.")
+	}
+
+	// Sign and verify with the imported public key
+	msg := []byte("Hello World")
+
+	digest, err := currentBCCSP.Hash(msg, &bccsp.SHAOpts{})
+	if err != nil {
+		t.Fatalf("Failed computing HASH [%s]", err)
+	}
+
+	signature, err := currentBCCSP.Sign(k, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed generating sm2 signature [%s]", err)
+	}
+
+	valid, err := currentBCCSP.Verify(pk2, signature, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed verifying sm2 signature [%s]", err)
+	}
+	if !valid {
+		t.Fatal("Failed verifying sm2 signature. Signature not valid.")
+	}
+}
+
+func TestSM2KeyImportFromSM2PrivateKey(t *testing.T) {
+
+	// Generate an sm2 key, default is P256
+	key, err := sm2.GenerateKey()
+	if err != nil {
+		t.Fatalf("Failed generating sm2 key [%s]", err)
+	}
+
+	// Import the sm2.PrivateKey
+	priv, err := utils.PrivateKeyToDER(key)
+	if err != nil {
+		t.Fatalf("Failed converting raw to sm2.PrivateKey [%s]", err)
+	}
+
+	sk, err := currentBCCSP.KeyImport(priv, &bccsp.SM2PrivateKeyImportOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed importing sm2 private key [%s]", err)
+	}
+	if sk == nil {
+		t.Fatal("Failed importing sm2 private key. Return BCCSP key cannot be nil.")
+	}
+
+	// Import the sm2.PublicKey
+	pub, err := utils.PublicKeyToDER(&key.PublicKey)
+	if err != nil {
+		t.Fatalf("Failed converting raw to sm2.PublicKey [%s]", err)
+	}
+
+	pk, err := currentBCCSP.KeyImport(pub, &bccsp.SM2PKIXPublicKeyImportOpts{Temporary: false})
+
+	if err != nil {
+		t.Fatalf("Failed importing sm2 public key [%s]", err)
+	}
+	if pk == nil {
+		t.Fatal("Failed importing sm2 public key. Return BCCSP key cannot be nil.")
+	}
+
+	// Sign and verify with the imported public key
+	msg := []byte("Hello World")
+
+	digest, err := currentBCCSP.Hash(msg, &bccsp.SHAOpts{})
+	if err != nil {
+		t.Fatalf("Failed computing HASH [%s]", err)
+	}
+
+	signature, err := currentBCCSP.Sign(sk, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed generating sm2 signature [%s]", err)
+	}
+
+	valid, err := currentBCCSP.Verify(pk, signature, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed verifying sm2 signature [%s]", err)
+	}
+	if !valid {
+		t.Fatal("Failed verifying sm2 signature. Signature not valid.")
+	}
+}
+func TestKeyImportFromX509SM2PublicKey(t *testing.T) {
+
+	// Generate an sm2 key
+	k, err := currentBCCSP.KeyGen(&bccsp.SM2KeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating sm2 key [%s]", err)
+	}
+
+	// Generate a self-signed certificate
+	//testExtKeyUsage := []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth}
+	testExtKeyUsage := []sm2.ExtKeyUsage{sm2.ExtKeyUsageClientAuth, sm2.ExtKeyUsageServerAuth}
+	testUnknownExtKeyUsage := []asn1.ObjectIdentifier{[]int{1, 2, 3}, []int{2, 59, 1}}
+	extraExtensionData := []byte("extra extension")
+	commonName := "test.example.com"
+	template := sm2.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject: pkix.Name{
+			CommonName:   commonName,
+			Organization: []string{"sansec ltd."},
+			Country:      []string{"CN"},
+			ExtraNames: []pkix.AttributeTypeAndValue{
+				{
+					Type:  []int{2, 5, 4, 42},
+					Value: "Gopher",
+				},
+				// This should override the Country, above.
+				{
+					Type:  []int{2, 5, 4, 6},
+					Value: "NL",
+				},
+			},
+		},
+		NotBefore: time.Now().Add(-1 * time.Hour),
+		NotAfter:  time.Now().Add(1 * time.Hour),
+
+		//SignatureAlgorithm: x509.ECDSAWithSHA256,
+		//SignatureAlgorithm: sm2.ECDSAWithSHA256,
+		SignatureAlgorithm: sm2.SM2WithSHA256,
+
+		SubjectKeyId: []byte{1, 2, 3, 4},
+		//KeyUsage:     x509.KeyUsageCertSign,
+		KeyUsage: sm2.KeyUsageCertSign,
+
+		ExtKeyUsage:        testExtKeyUsage,
+		UnknownExtKeyUsage: testUnknownExtKeyUsage,
+
+		BasicConstraintsValid: true,
+		IsCA: true,
+
+		OCSPServer:            []string{"http://ocurrentBCCSP.example.com"},
+		IssuingCertificateURL: []string{"http://crt.example.com/ca1.crt"},
+
+		DNSNames:       []string{"test.example.com"},
+		EmailAddresses: []string{"gopher@golang.org"},
+		IPAddresses:    []net.IP{net.IPv4(127, 0, 0, 1).To4(), net.ParseIP("2001:4860:0:2001::68")},
+
+		PolicyIdentifiers:   []asn1.ObjectIdentifier{[]int{1, 2, 3}},
+		PermittedDNSDomains: []string{".example.com", "example.com"},
+
+		CRLDistributionPoints: []string{"http://crl1.example.com/ca1.crl", "http://crl2.example.com/ca1.crl"},
+
+		ExtraExtensions: []pkix.Extension{
+			{
+				Id:    []int{1, 2, 3, 4},
+				Value: extraExtensionData,
+			},
+		},
+	}
+
+	cryptoSigner, err := signer.New(currentBCCSP, k)
+	if err != nil {
+		t.Fatalf("Failed initializing CyrptoSigner [%s]", err)
+	}
+
+	// Export the public key
+	pk, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting sm2 public key [%s]", err)
+	}
+
+	pkRaw, err := pk.Bytes()
+	if err != nil {
+		t.Fatalf("Failed getting sm2 raw public key [%s]", err)
+	}
+
+	pub, err := utils.DERToPublicKey(pkRaw)
+	if err != nil {
+		t.Fatalf("Failed converting raw to sm2.PublicKey [%s]", err)
+	}
+
+	certRaw, err := sm2.CreateCertificate(rand.Reader, &template, &template, pub, cryptoSigner)
+	//	certRaw, err := sm2.CreateCertificate(rand.Reader, &template, &template, pub, k)
+	if err != nil {
+		t.Fatalf("Failed generating self-signed certificate [%s]", err)
+	}
+
+	//cert, err := utils.DERToX509Certificate(certRaw)
+	sm2cert, err := utils.DERToSM2X509Certificate(certRaw)
+	cert := sm2Utils.ParseSm2Certificate2X509(sm2cert)
+	if err != nil {
+		t.Fatalf("Failed generating sm2 certificate object from raw [%s]", err)
+	}
+
+	// Import the certificate's public key
+	pk2, err := currentBCCSP.KeyImport(cert, &bccsp.X509PublicKeyImportOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed importing sm2 public key [%s]", err)
+	}
+	if pk2 == nil {
+		t.Fatal("Failed importing sm2 public key. Return BCCSP key cannot be nil.")
+	}
+
+	// Sign and verify with the imported public key
+	msg := []byte("Hello World")
+
+	digest, err := currentBCCSP.Hash(msg, &bccsp.SHAOpts{})
+	if err != nil {
+		t.Fatalf("Failed computing HASH [%s]", err)
+	}
+
+	signature, err := currentBCCSP.Sign(k, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed generating sm2 signature [%s]", err)
+	}
+
+	valid, err := currentBCCSP.Verify(pk2, signature, digest, nil)
+	if err != nil {
+		t.Fatalf("Failed verifying sm2 signature [%s]", err)
+	}
+	if !valid {
+		t.Fatal("Failed verifying sm2 signature. Signature not valid.")
+	}
+}
+
+func TestSM2SignatureEncoding(t *testing.T) {
+	v := []byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x02, 0xff, 0xf1}
+	_, err := asn1.Unmarshal(v, &SM2Signature{})
+	if err == nil {
+		t.Fatalf("Unmarshalling should fail for [% x]", v)
+	}
+	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
+
+	v = []byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x02, 0x00, 0x01}
+	_, err = asn1.Unmarshal(v, &SM2Signature{})
+	if err == nil {
+		t.Fatalf("Unmarshalling should fail for [% x]", v)
+	}
+	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
+
+	v = []byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x81, 0x01, 0x01}
+	_, err = asn1.Unmarshal(v, &SM2Signature{})
+	if err == nil {
+		t.Fatalf("Unmarshalling should fail for [% x]", v)
+	}
+	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
+
+	v = []byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x81, 0x01, 0x8F}
+	_, err = asn1.Unmarshal(v, &SM2Signature{})
+	if err == nil {
+		t.Fatalf("Unmarshalling should fail for [% x]", v)
+	}
+	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
+
+	v = []byte{0x30, 0x0A, 0x02, 0x01, 0x8F, 0x02, 0x05, 0x00, 0x00, 0x00, 0x00, 0x8F}
+	_, err = asn1.Unmarshal(v, &SM2Signature{})
+	if err == nil {
+		t.Fatalf("Unmarshalling should fail for [% x]", v)
+	}
+	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
+}
+
+//low-S check for sm2? TODO

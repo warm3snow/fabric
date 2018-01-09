@@ -8,8 +8,9 @@
 
 UP_DOWN="$1"
 CH_NAME="$2"
-CLI_TIMEOUT="$3"
-IF_COUCHDB="$4"
+CRYPTO_FLAG="$3"
+CLI_TIMEOUT="$4"
+IF_COUCHDB="$5"
 
 : ${CLI_TIMEOUT:="10000"}
 
@@ -18,7 +19,7 @@ COMPOSE_FILE_COUCH=docker-compose-couch.yaml
 #COMPOSE_FILE=docker-compose-e2e.yaml
 
 function printHelp () {
-	echo "Usage: ./network_setup <up|down> <\$channel-name> <\$cli_timeout> <couchdb>.\nThe arguments must be in order."
+	echo "Usage: ./network_setup <up|down> <\$sm2> <\$channel-name> <\$cli_timeout> <couchdb>. \nThe arguments must be in order."
 }
 
 function validateArgs () {
@@ -31,6 +32,11 @@ function validateArgs () {
 		echo "setting to default channel 'mychannel'"
 		CH_NAME=mychannel
 	fi
+    if [ -z "${CRYPTO_FLAG}" ]; then
+        echo "Using 'ECDSA' crypto algo to generate MSPs"
+    else
+        echo "Using 'SM2' crypto algo to generate MSPs"
+    fi
 }
 
 function clearContainers () {
@@ -57,7 +63,7 @@ function networkUp () {
     else
       #Generate all the artifacts that includes org certs, orderer genesis block,
       # channel configuration transaction
-      source generateArtifacts.sh $CH_NAME
+      source generateArtifacts.sh $CH_NAME $CRYPTO_FLAG
     fi
 
     if [ "${IF_COUCHDB}" == "couchdb" ]; then

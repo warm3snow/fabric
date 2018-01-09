@@ -1,4 +1,5 @@
 /*
+Copyright Beijing Sansec Technology Development Co., Ltd. 2017 All Rights Reserved.
 Copyright IBM Corp. 2016 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/mocks"
 	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/warm3snow/gmsm/sm2"
 )
 
 func TestInitFailures(t *testing.T) {
@@ -64,6 +66,22 @@ func TestInit(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.True(t, ecdsa.Verify(signer.Public().(*ecdsa.PublicKey), []byte{0, 1, 2, 3}, R, S))
+}
+
+func TestSM2Init(t *testing.T) {
+	k, err := sm2.GenerateKey()
+	assert.NoError(t, err)
+	pkRaw, err := utils.PublicKeyToDER(&k.PublicKey)
+	assert.NoError(t, err)
+
+	signer, err := New(&mocks.MockBCCSP{}, &mocks.MockKey{PK: &mocks.MockKey{BytesValue: pkRaw}})
+	assert.NoError(t, err)
+	assert.NotNil(t, signer)
+
+	r, s, err := sm2.Sign(k, []byte{0, 1, 2, 3})
+	assert.NoError(t, err)
+
+	assert.True(t, sm2.Verify(signer.Public().(*sm2.PublicKey), []byte{0, 1, 2, 3}, r, s))
 }
 
 func TestPublic(t *testing.T) {

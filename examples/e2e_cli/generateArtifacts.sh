@@ -12,6 +12,10 @@ CHANNEL_NAME=$1
 : ${CHANNEL_NAME:="mychannel"}
 echo $CHANNEL_NAME
 
+CRYPTO_FLAG=$2
+: ${CRYPTO_FLAG:="sm2"}
+echo "Using Cryto Algorithm: $CRYPTO_FLAG"
+
 export FABRIC_ROOT=$PWD/../..
 export FABRIC_CFG_PATH=$PWD
 echo
@@ -55,7 +59,11 @@ function generateCerts (){
 	echo "##########################################################"
 	echo "##### Generate certificates using cryptogen tool #########"
 	echo "##########################################################"
-	$CRYPTOGEN generate --config=./crypto-config.yaml
+    if [ "${CRYPTO_FLAG}" == "sm2" ]; then
+        $CRYPTOGEN generate --config=./crypto-config.yaml --sm2
+    else
+        $CRYPTOGEN generate --config=./crypto-config.yaml
+    fi
 	echo
 }
 
