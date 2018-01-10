@@ -544,6 +544,24 @@
 			"revisionTime": "2016-10-11T05:00:08Z"
 		},
 		{
+			"checksumSHA1": "EOCkPnNIXLheM+j2Jc5yz6F0Fm0=",
+			"path": "github.com/warm3snow/gmsm/sm2",
+			"revision": "8634d6df732ab6256579f7c8aa5037d8d136bc7c",
+			"revisionTime": "2017-10-13T02:13:19Z"
+		},
+		{
+			"checksumSHA1": "3OeHtDy+Lj2rCzHk7piF5ScbXJc=",
+			"path": "github.com/warm3snow/gmsm/utils",
+			"revision": "8634d6df732ab6256579f7c8aa5037d8d136bc7c",
+			"revisionTime": "2017-10-13T02:13:19Z"
+		},
+		{
+			"checksumSHA1": "10nB0AIMvnGmlLSD/MRuK+eO3pA=",
+			"path": "github.com/warm3snow/pkcs11",
+			"revision": "b5ac27b08c5f3c36a0d012c09fdb547b51d4870f",
+			"revisionTime": "2017-09-12T01:39:45Z"
+		},
+		{
 			"path": "golang.org/x/crypto/hkdf",
 			"revision": "c8b9e6388ef638d5a8a9d865c634befdc46a6784",
 			"revisionTime": "2015-06-18T17:47:17-07:00"
