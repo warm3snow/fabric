@@ -7,11 +7,12 @@
 
 
 UP_DOWN="$1"
-CH_NAME="$2"
-CRYPTO_FLAG="$3"
+CRYPTO_FLAG="$2"
+CH_NAME="$3"
 CLI_TIMEOUT="$4"
 IF_COUCHDB="$5"
 
+: ${CRYPTO_FLAG:="ecdsa"}
 : ${CLI_TIMEOUT:="10000"}
 
 COMPOSE_FILE=docker-compose-cli.yaml
@@ -19,7 +20,7 @@ COMPOSE_FILE_COUCH=docker-compose-couch.yaml
 #COMPOSE_FILE=docker-compose-e2e.yaml
 
 function printHelp () {
-	echo "Usage: ./network_setup <up|down> <\$sm2> <\$channel-name> <\$cli_timeout> <couchdb>. \nThe arguments must be in order."
+	echo "Usage: ./network_setup <up|down> <\$crypto_alg> <\$channel-name> <\$cli_timeout> <couchdb>. \nThe arguments must be in order."
 }
 
 function validateArgs () {
@@ -32,10 +33,10 @@ function validateArgs () {
 		echo "setting to default channel 'mychannel'"
 		CH_NAME=mychannel
 	fi
-    if [ -z "${CRYPTO_FLAG}" ]; then
-        echo "Using 'ECDSA' crypto algo to generate MSPs"
-    else
+    if [ "$CRYPTO_FLAG" = "sm2" -o "$CRYPTO_FLAG" = "SM2" ]; then
         echo "Using 'SM2' crypto algo to generate MSPs"
+    else
+        echo "Using 'ECDSA' crypto algo to generate MSPs"
     fi
 }
 
