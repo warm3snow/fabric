@@ -802,7 +802,6 @@ func parsePublicKey(algo x509.PublicKeyAlgorithm, keyData *publicKeyInfo) (inter
 				X:     x,
 				Y:     y,
 			}
-			fmt.Println("parse to sm2.PublicKey")
 			return pub, nil
 		} else {
 			pub := &ecdsa.PublicKey{
@@ -810,7 +809,6 @@ func parsePublicKey(algo x509.PublicKeyAlgorithm, keyData *publicKeyInfo) (inter
 				X:     x,
 				Y:     y,
 			}
-			fmt.Println("parse to ecdsa.PublicKey")
 			return pub, nil
 		}
 
