@@ -66,5 +66,4 @@ func TestSWFactoryGet(t *testing.T) {
 	csp, err = f.Get(opts)
 	assert.NoError(t, err)
 	assert.NotNil(t, csp)
-
 }

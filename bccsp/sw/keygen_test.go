@@ -1,4 +1,5 @@
 /*
+Copyright Beijing Sansec Technology Development Co., Ltd. 2017 All Rights Reserved.
 Copyright IBM Corp. 2017 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +26,7 @@ import (
 	mocks2 "github.com/hyperledger/fabric/bccsp/mocks"
 	"github.com/hyperledger/fabric/bccsp/sw/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/warm3snow/gmsm/sm2"
 )
 
 func TestKeyGen(t *testing.T) {
@@ -53,6 +55,15 @@ func TestKeyGen(t *testing.T) {
 	value, err = csp.KeyGen(expectedOpts)
 	assert.Equal(t, expectetValue, value)
 	assert.Nil(t, err)
+}
+func TestSM2KeyGenerator(t *testing.T) {
+	kg := &sm2KeyGenerator{curve: sm2.P256Sm2()}
+	k, err := kg.KeyGen(nil)
+	assert.NoError(t, err)
+	sm2K, ok := k.(*sm2PrivateKey)
+	assert.True(t, ok)
+	assert.NotNil(t, sm2K.privKey)
+	assert.Equal(t, sm2K.privKey.Curve, sm2.P256Sm2())
 }
 
 func TestECDSAKeyGenerator(t *testing.T) {

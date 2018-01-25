@@ -53,7 +53,11 @@ func setFactories(config *FactoryOpts) error {
 	}
 
 	if config.SwOpts == nil {
-		config.SwOpts = GetDefaultOpts().SwOpts
+		config.SwOpts = &SwOpts{
+			HashFamily: "SHA2",
+			SecLevel:   256,
+			Ephemeral:  true,
+		}
 	}
 
 	// Initialize factories map

@@ -1,4 +1,5 @@
 /*
+Copyright Beijing Sansec Technology Development Co., Ltd. 2017 All Rights Reserved.
 Copyright IBM Corp. 2016 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,9 +25,11 @@ import (
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/pem"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/warm3snow/gmsm/sm2"
 )
 
 func TestOidFromNamedCurve(t *testing.T) {
@@ -96,6 +99,219 @@ func TestOidFromNamedCurve(t *testing.T) {
 			assert.Equal(t, oid, test.expected.oid)
 			assert.Equal(t, ok, test.expected.ok)
 		})
+	}
+
+}
+
+func TestSM2Keys(t *testing.T) {
+	key, err := sm2.GenerateKey()
+	if err != nil {
+		t.Fatalf("Failed generating SM2 key [%s]", err)
+	}
+	//Private key DER format
+	der, err := PrivateKeyToDER(key)
+	if err != nil {
+		t.Fatalf("Failed converting private key to DER [%s]", err)
+	}
+	keyFromDer, err := DERToPrivateKey(der)
+	if err != nil {
+		t.Fatalf("Failed converting DER to private key [%s]", err)
+	}
+	sm2KeyFromDer := keyFromDer.(*sm2.PrivateKey)
+	//check curve params TODO
+	if key.D.Cmp(sm2KeyFromDer.D) != 0 {
+		t.Fatal("Failed converting DER to private key. Invalid D")
+	}
+	if key.X.Cmp(sm2KeyFromDer.X) != 0 {
+		t.Fatal("Failed converting DER to private key. Invalid X coordinate.")
+	}
+	if key.Y.Cmp(sm2KeyFromDer.Y) != 0 {
+		t.Fatal("Failed converting DER to private key. Invalid Y coordinate.")
+	}
+
+	//Private key PEM format
+	rawPEM, err := PrivateKeyToPEM(key, nil)
+	if err != nil {
+		t.Fatalf("Failed converting private key to PEM [%s]", err)
+	}
+	pemBlock, _ := pem.Decode(rawPEM)
+	if pemBlock.Type != "PRIVATE KEY" {
+		t.Fatalf("Expected type 'PRIVATE KEY' but found '%s'", pemBlock.Type)
+	}
+	keyFromPEM, err := PEMtoPrivateKey(rawPEM, nil)
+	if err != nil {
+		t.Fatalf("Failed converting PEM to private key [%s]", err)
+	}
+	sm2KeyFromPem := keyFromPEM.(*sm2.PrivateKey)
+	//TODO:	check the curve
+	if key.D.Cmp(sm2KeyFromPem.D) != 0 {
+		t.Fatal("Failed converting PEM to private key. Invalid D")
+	}
+	if key.X.Cmp(sm2KeyFromPem.X) != 0 {
+		t.Fatal("Failed converting PEM to private key. Invalid X coordinate.")
+	}
+	if key.Y.Cmp(sm2KeyFromPem.Y) != 0 {
+		t.Fatal("Failed converting PEM to private key. Invalid Y coordinate.")
+	}
+	// Nil Private Key <-> PEM
+	_, err = PrivateKeyToPEM(nil, nil)
+	if err == nil {
+		t.Fatal("PublicKeyToPEM should fail on nil")
+	}
+
+	_, err = PrivateKeyToPEM((*sm2.PrivateKey)(nil), nil)
+	if err == nil {
+		t.Fatal("PrivateKeyToPEM should fail on nil")
+	}
+
+	_, err = PrivateKeyToPEM((*rsa.PrivateKey)(nil), nil)
+	if err == nil {
+		t.Fatal("PrivateKeyToPEM should fail on nil")
+	}
+
+	_, err = PEMtoPrivateKey(nil, nil)
+	if err == nil {
+		t.Fatal("PEMtoPublicKey should fail on nil")
+	}
+
+	_, err = PEMtoPrivateKey([]byte{0, 1, 3, 4}, nil)
+	if err == nil {
+		t.Fatal("PEMtoPublicKey should fail invalid PEM")
+	}
+
+	_, err = DERToPrivateKey(nil)
+	if err == nil {
+		t.Fatal("DERToPrivateKey should fail on nil")
+	}
+
+	_, err = DERToPrivateKey([]byte{0, 1, 3, 4})
+	if err == nil {
+		t.Fatal("DERToPrivateKey should fail on invalid DER")
+	}
+
+	_, err = PrivateKeyToDER(nil)
+	if err == nil {
+		t.Fatal("DERToPrivateKey should fail on nil")
+	}
+
+	// Private Key Encrypted PEM format
+	encPEM, err := PrivateKeyToPEM(key, []byte("passwd"))
+	if err != nil {
+		t.Fatalf("Failed converting private key to encrypted PEM [%s]", err)
+	}
+	_, err = PEMtoPrivateKey(encPEM, nil)
+	assert.Error(t, err)
+	encKeyFromPEM, err := PEMtoPrivateKey(encPEM, []byte("passwd"))
+	if err != nil {
+		t.Fatalf("Failed converting DER to private key [%s]", err)
+	}
+	sm2KeyFromEncPEM := encKeyFromPEM.(*sm2.PrivateKey)
+	// TODO: check the curve
+	if key.D.Cmp(sm2KeyFromEncPEM.D) != 0 {
+		t.Fatal("Failed converting encrypted PEM to private key. Invalid D.")
+	}
+	if key.X.Cmp(sm2KeyFromEncPEM.X) != 0 {
+		t.Fatal("Failed converting encrypted PEM to private key. Invalid X coordinate.")
+	}
+	if key.Y.Cmp(sm2KeyFromEncPEM.Y) != 0 {
+		t.Fatal("Failed converting encrypted PEM to private key. Invalid Y coordinate.")
+	}
+	// Public Key PEM format
+	rawPEM, err = PublicKeyToPEM(&key.PublicKey, nil)
+	if err != nil {
+		t.Fatalf("Failed converting public key to PEM [%s]", err)
+	}
+	pemBlock, _ = pem.Decode(rawPEM)
+	if pemBlock.Type != "PUBLIC KEY" {
+		t.Fatalf("Expected type 'PUBLIC KEY' but found '%s'", pemBlock.Type)
+	}
+	keyFromPEM, err = PEMtoPublicKey(rawPEM, nil)
+	if err != nil {
+		t.Fatalf("Failed converting DER to public key [%s]", err)
+	}
+	sm2PkFromPEM := keyFromPEM.(*sm2.PublicKey)
+	// TODO: check the curve
+	if key.X.Cmp(sm2PkFromPEM.X) != 0 {
+		t.Fatal("Failed converting PEM to private key. Invalid X coordinate.")
+	}
+	if key.Y.Cmp(sm2PkFromPEM.Y) != 0 {
+		t.Fatal("Failed converting PEM to private key. Invalid Y coordinate.")
+	}
+
+	// Nil Public Key <-> PEM
+	_, err = PublicKeyToPEM(nil, nil)
+	if err == nil {
+		t.Fatal("PublicKeyToPEM should fail on nil")
+	}
+
+	_, err = PEMtoPublicKey(nil, nil)
+	if err == nil {
+		t.Fatal("PEMtoPublicKey should fail on nil")
+	}
+
+	_, err = PEMtoPublicKey([]byte{0, 1, 3, 4}, nil)
+	if err == nil {
+		t.Fatal("PEMtoPublicKey should fail on invalid PEM")
+	}
+
+	// Public Key Encrypted PEM format, pwd is no use for sm2 publickey TODO
+	/*
+		encPEM, err = PublicKeyToPEM(&key.PublicKey, []byte("passwd"))
+		if err != nil {
+			t.Fatalf("Failed converting private key to encrypted PEM [%s]", err)
+		}
+		_, err = PEMtoPublicKey(encPEM, nil)
+		assert.NoError(t, err) //this isn't an error, because it's not a must for publickey to have pwd
+		pkFromEncPEM, err := PEMtoPublicKey(encPEM, []byte("passwd"))
+		if err != nil {
+			t.Fatalf("Failed converting DER to private key [%s]", err)
+		}
+		sm2PkFromEncPEM := pkFromEncPEM.(*sm2.PublicKey)
+		// TODO: check the curve
+		if key.X.Cmp(sm2PkFromEncPEM.X) != 0 {
+			t.Fatal("Failed converting encrypted PEM to private key. Invalid X coordinate.")
+		}
+		if key.Y.Cmp(sm2PkFromEncPEM.Y) != 0 {
+			t.Fatal("Failed converting encrypted PEM to private key. Invalid Y coordinate.")
+		}
+			_, err = PEMtoPublicKey(encPEM, []byte("passw"))
+			if err == nil {
+				t.Fatal("PEMtoPublicKey should fail on wrong password")
+			}
+
+			_, err = PEMtoPublicKey(encPEM, []byte("passw"))
+			if err == nil {
+				t.Fatal("PEMtoPublicKey should fail on nil password")
+			}
+
+			_, err = PEMtoPublicKey(nil, []byte("passwd"))
+			if err == nil {
+				t.Fatal("PEMtoPublicKey should fail on nil PEM")
+			}
+
+			_, err = PEMtoPublicKey([]byte{0, 1, 3, 4}, []byte("passwd"))
+			if err == nil {
+				t.Fatal("PEMtoPublicKey should fail on invalid PEM")
+			}
+
+			_, err = PEMtoPublicKey(nil, []byte("passw"))
+			if err == nil {
+				t.Fatal("PEMtoPublicKey should fail on nil PEM and wrong password")
+			}
+	*/
+
+	// Public Key DER format
+	der, err = PublicKeyToDER(&key.PublicKey)
+	assert.NoError(t, err)
+	keyFromDER, err := DERToPublicKey(der)
+	assert.NoError(t, err)
+	sm2PkFromPEM = keyFromDER.(*sm2.PublicKey)
+	// TODO: check the curve
+	if key.X.Cmp(sm2PkFromPEM.X) != 0 {
+		t.Fatal("Failed converting PEM to private key. Invalid X coordinate.")
+	}
+	if key.Y.Cmp(sm2PkFromPEM.Y) != 0 {
+		t.Fatal("Failed converting PEM to private key. Invalid Y coordinate.")
 	}
 
 }
@@ -234,6 +450,7 @@ func TestECDSAKeys(t *testing.T) {
 		t.Fatalf("Failed converting DER to public key [%s]", err)
 	}
 	ecdsaPkFromPEM := keyFromPEM.(*ecdsa.PublicKey)
+	fmt.Println("step1")
 	// TODO: check the curve
 	if key.X.Cmp(ecdsaPkFromPEM.X) != 0 {
 		t.Fatal("Failed converting PEM to private key. Invalid X coordinate.")

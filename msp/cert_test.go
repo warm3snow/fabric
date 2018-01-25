@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/bccsp/sw"
+	cspx509 "github.com/hyperledger/fabric/bccsp/x509"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -97,26 +98,26 @@ func TestSanitizeCert(t *testing.T) {
 
 func TestCertExpiration(t *testing.T) {
 	msp := &bccspmsp{}
-	msp.opts = &x509.VerifyOptions{}
+	msp.opts = &cspx509.VerifyOptions{}
 	msp.opts.DNSName = "test.example.com"
 
 	// Certificate is in the future
 	_, cert := generateSelfSignedCert(t, time.Now().Add(24*time.Hour))
-	msp.opts.Roots = x509.NewCertPool()
+	msp.opts.Roots = cspx509.NewCertPool()
 	msp.opts.Roots.AddCert(cert)
 	_, err := msp.getUniqueValidationChain(cert, msp.getValidityOptsForCert(cert))
 	assert.NoError(t, err)
 
 	// Certificate is in the past
 	_, cert = generateSelfSignedCert(t, time.Now().Add(-24*time.Hour))
-	msp.opts.Roots = x509.NewCertPool()
+	msp.opts.Roots = cspx509.NewCertPool()
 	msp.opts.Roots.AddCert(cert)
 	_, err = msp.getUniqueValidationChain(cert, msp.getValidityOptsForCert(cert))
 	assert.NoError(t, err)
 
 	// Certificate is in the middle
 	_, cert = generateSelfSignedCert(t, time.Now())
-	msp.opts.Roots = x509.NewCertPool()
+	msp.opts.Roots = cspx509.NewCertPool()
 	msp.opts.Roots.AddCert(cert)
 	_, err = msp.getUniqueValidationChain(cert, msp.getValidityOptsForCert(cert))
 	assert.NoError(t, err)
@@ -173,10 +174,10 @@ func generateSelfSignedCert(t *testing.T, now time.Time) (*ecdsa.PrivateKey, *x5
 			},
 		},
 	}
-	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, &k.PublicKey, k)
+	certRaw, err := cspx509.CreateCertificate(rand.Reader, &template, &template, &k.PublicKey, k)
 	assert.NoError(t, err)
 
-	cert, err := x509.ParseCertificate(certRaw)
+	cert, err := cspx509.ParseCertificate(certRaw)
 	assert.NoError(t, err)
 
 	return k, cert

@@ -1,4 +1,5 @@
 /*
+Copyright Beijing Sansec Technology Development Co., Ltd. 2017 All Rights Reserved.
 Copyright IBM Corp. 2016 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,9 +19,15 @@ package utils
 
 import (
 	"crypto/x509"
+
+	"github.com/warm3snow/gmsm/sm2"
 )
 
 // DERToX509Certificate converts der to x509
 func DERToX509Certificate(asn1Data []byte) (*x509.Certificate, error) {
 	return x509.ParseCertificate(asn1Data)
+}
+
+func DERToSM2X509Certificate(asn1Data []byte) (*sm2.Certificate, error) {
+	return sm2.ParseCertificate(asn1Data)
 }

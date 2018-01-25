@@ -151,9 +151,17 @@ func GetLocalMspConfig(dir string, bccspConfig *factory.FactoryOpts, ID string) 
 	1) there is exactly one signing cert
 	2) BCCSP's KeyStore has the private key that matches SKI of
 	   signing cert
+	3) read a key from keystore, by warm3snow
 	*/
-
-	sigid := &msp.SigningIdentityInfo{PublicSigner: signcert[0], PrivateSigner: nil}
+	keys, err := getPemMaterialFromDir(keystoreDir)
+	if err != nil || len(keys) == 0 {
+		return nil, fmt.Errorf("Could not load a valid signer key from directory %s, err %s", keystoreDir, err)
+	}
+	signkeyInfo := &msp.KeyInfo{
+		KeyIdentifier: "Soft_BCCSP", //for futural use, soft_bccsp or hsm_bccsp
+		KeyMaterial:   keys[0],
+	}
+	sigid := &msp.SigningIdentityInfo{PublicSigner: signcert[0], PrivateSigner: signkeyInfo}
 
 	return getMspConfig(dir, ID, sigid)
 }

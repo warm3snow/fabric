@@ -1,4 +1,5 @@
 /*
+Copyright Beijing Sansec Technology Development Co., Ltd. 2017 All Rights Reserved.
 Copyright IBM Corp. 2017 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +25,21 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/warm3snow/gmsm/sm2"
 )
+
+//add by hxy 2017/9/25
+type sm2KeyGenerator struct {
+	curve elliptic.Curve
+}
+
+func (kg *sm2KeyGenerator) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
+	privKey, err := sm2.GenerateKey()
+	if err != nil {
+		return nil, fmt.Errorf("Failed generating sm2 key for [%v]: [%s]", kg.curve, err)
+	}
+	return &sm2PrivateKey{privKey}, nil
+}
 
 type ecdsaKeyGenerator struct {
 	curve elliptic.Curve

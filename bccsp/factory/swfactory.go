@@ -38,6 +38,7 @@ func (f *SWFactory) Name() string {
 
 // Get returns an instance of BCCSP using Opts.
 func (f *SWFactory) Get(config *FactoryOpts) (bccsp.BCCSP, error) {
+	
 	// Validate arguments
 	if config == nil || config.SwOpts == nil {
 		return nil, errors.New("Invalid config. It must not be nil.")

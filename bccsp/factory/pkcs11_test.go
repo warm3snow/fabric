@@ -56,7 +56,14 @@ func TestSetFactoriesInvalidArgs(t *testing.T) {
 }
 
 func TestGetBCCSPFromOpts(t *testing.T) {
-	opts := GetDefaultOpts()
+	opts := &FactoryOpts{
+		ProviderName: "SW",
+		SwOpts: &SwOpts{
+			HashFamily: "SHA2",
+			SecLevel:   256,
+			Ephemeral:  true,
+		},
+	}
 	opts.SwOpts.FileKeystore = &FileKeystoreOpts{KeyStorePath: os.TempDir()}
 	opts.SwOpts.Ephemeral = false
 	csp, err := GetBCCSPFromOpts(opts)
@@ -84,4 +91,5 @@ func TestGetBCCSPFromOpts(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Could not find BCCSP, no 'BadName' provider")
 	assert.Nil(t, csp)
+
 }
